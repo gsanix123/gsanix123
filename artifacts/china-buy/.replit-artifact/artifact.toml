@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "CHINA BUY"
+description = "Русскоязычный сервис-посредник для демонстрации заказа товаров из Китая: оформление заявок, ориентировочный расчёт стоимости, личный кабинет клиента и административное управление заказами."
+version = "1.0.0"
+id = "artifacts/china-buy"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25331
+
+[services.development]
+run = "pnpm --filter @workspace/china-buy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/china-buy", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/china-buy/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25331"
+BASE_PATH = "/"

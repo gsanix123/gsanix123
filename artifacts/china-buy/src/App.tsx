@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 type Role = 'client' | 'admin';
-type Status = 'Новая заявка' | 'На выкупе' | 'Выкуплен' | 'В пути' | 'Получен';
+type Status = 'Новый' | 'На выкупе' | 'Выкуплен' | 'В пути' | 'На складе' | 'Доставлен';
 type Account = { id: string; name: string; email: string; phone: string; role: Role; password: string };
 type Order = {
   id: string; userId: string; name: string; platform: string; url: string; size: string;
@@ -21,7 +21,7 @@ type Order = {
 type Profile = { name: string; email: string; phone: string; city: string; address: string };
 const queryClient = new QueryClient();
 const KEYS = { accounts: 'china-buy-accounts', orders: 'china-buy-orders', profiles: 'china-buy-profiles', profile: 'china-buy-profile', session: 'china-buy-session' };
-const STATUSES: Status[] = ['Новая заявка', 'На выкупе', 'Выкуплен', 'В пути', 'Получен'];
+const STATUSES: Status[] = ['Новый', 'На выкупе', 'Выкуплен', 'В пути', 'На складе', 'Доставлен'];
 const PLATFORMS = ['POIZON', '1688', 'Taobao'];
 const demoAccounts: Account[] = [
   { id: 'client-1', name: 'Алина Смирнова', email: 'alina@example.ru', phone: '+7 916 245-18-30', role: 'client', password: 'demo123' },
@@ -31,9 +31,16 @@ const demoAccounts: Account[] = [
 const seedOrders: Order[] = [
   { id: 'CB-24018', userId: 'client-1', name: 'Алина Смирнова', platform: 'POIZON', url: 'https://poizon.com/product/retro-runner', size: '38 EU', color: 'Молочный / серый', quantity: 1, comment: 'Проверить коробку перед отправкой', status: 'В пути', created: '18.05.2025' },
   { id: 'CB-24011', userId: 'client-1', name: 'Алина Смирнова', platform: 'Taobao', url: 'https://item.taobao.com/item.htm?id=48201', size: 'M', color: 'Графит', quantity: 2, comment: '', status: 'На выкупе', created: '14.05.2025' },
-  { id: 'CB-24006', userId: 'client-2', name: 'Максим Волков', platform: '1688', url: 'https://detail.1688.com/offer/830044', size: 'Универсальный', color: 'Черный', quantity: 1, comment: '', status: 'Новая заявка', created: '12.05.2025' },
-  { id: 'CB-23992', userId: 'client-2', name: 'Максим Волков', platform: 'POIZON', url: 'https://poizon.com/product/city-bag', size: 'One size', color: 'Хаки', quantity: 1, comment: '', status: 'Получен', created: '06.05.2025' },
+  { id: 'CB-24009', userId: 'client-1', name: 'Алина Смирнова', platform: '1688', url: 'https://detail.1688.com/offer/830044', size: 'Универсальный', color: 'Черный', quantity: 1, comment: '', status: 'Выкуплен', created: '13.05.2025' },
+  { id: 'CB-24006', userId: 'client-2', name: 'Максим Волков', platform: '1688', url: 'https://detail.1688.com/offer/830044', size: 'Универсальный', color: 'Черный', quantity: 1, comment: '', status: 'Новый', created: '12.05.2025' },
+  { id: 'CB-24002', userId: 'client-2', name: 'Максим Волков', platform: 'Taobao', url: 'https://item.taobao.com/item.htm?id=48201', size: 'M', color: 'Графит', quantity: 1, comment: '', status: 'На складе', created: '10.05.2025' },
+  { id: 'CB-23992', userId: 'client-2', name: 'Максим Волков', platform: 'POIZON', url: 'https://poizon.com/product/city-bag', size: 'One size', color: 'Хаки', quantity: 1, comment: '', status: 'Доставлен', created: '06.05.2025' },
 ];
+
+function normalizeStatus(status: string): Status {
+  const migrated = status === 'Новая заявка' ? 'Новый' : status === 'Получен' ? 'Доставлен' : status;
+  return STATUSES.includes(migrated as Status) ? migrated as Status : 'Новый';
+}
 
 function readStore<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -51,7 +58,10 @@ function Brand({ inverse = false }: { inverse?: boolean }) {
 function AppShell() {
   const [path, setPath] = useLocation();
   const [accounts, setAccounts] = useState<Account[]>(() => readStore(KEYS.accounts, demoAccounts));
-  const [orders, setOrders] = useState<Order[]>(() => readStore(KEYS.orders, seedOrders));
+  const [orders, setOrders] = useState<Order[]>(() =>
+    readStore<Array<Omit<Order, 'status'> & { status: string }>>(KEYS.orders, seedOrders)
+      .map(order => ({ ...order, status: normalizeStatus(order.status) })),
+  );
   const [session, setSession] = useState<string>(() => readStore(KEYS.session, 'client-1'));
   const [profiles, setProfiles] = useState<Record<string, Profile>>(() => readStore(KEYS.profiles, {}));
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -90,10 +100,10 @@ function AppShell() {
     <header className="topbar">
       <div className="topbar-inner"><Brand />
         <nav className={`main-nav ${mobileMenu ? 'nav-open' : ''}`} aria-label="Основная навигация">
-          {navigation.map(item => <Link key={item.href} href={item.href} className={`nav-link ${path === item.href ? 'nav-active' : ''}`} data-testid={`link-nav-${item.label}`}>
+          {navigation.map(item => <Link key={item.href} href={item.href} className={`nav-link ${path === item.href ? 'nav-active' : ''}`} onClick={() => setMobileMenu(false)} data-testid={`link-nav-${item.label}`}>
             <item.icon size={15} strokeWidth={1.7} />{item.label}
           </Link>)}
-          {isAdmin && <Link href="/admin" className={`nav-link ${path === '/admin' ? 'nav-active' : ''}`} data-testid="link-nav-admin"><ShieldCheck size={15} />Управление</Link>}
+          {isAdmin && <Link href="/admin" className={`nav-link ${path === '/admin' ? 'nav-active' : ''}`} onClick={() => setMobileMenu(false)} data-testid="link-nav-admin"><ShieldCheck size={15} />Управление</Link>}
         </nav>
         <div className="top-actions">
           <button className="role-switch" onClick={() => switchRole(isAdmin ? 'client' : 'admin')} data-testid="button-role-switch" aria-label="Переключить демо-роль">
@@ -128,7 +138,7 @@ function AppShell() {
 }
 
 function HomePage({ account, orders, go }: { account?: Account; orders: Order[]; go: (path: string) => void }) {
-  const active = orders.filter(order => order.status !== 'Получен').length;
+  const active = orders.filter(order => order.status !== 'Доставлен').length;
   return <div className="home-page">
     <section className="hero-panel">
       <div className="hero-copy">
@@ -157,7 +167,7 @@ function HomePage({ account, orders, go }: { account?: Account; orders: Order[];
       </div>
     </section>
     <section className="platform-section"><div className="platform-heading"><div><div className="section-kicker">ОТКУДА ПОКУПАЕМ</div><h2>Три площадки.<br /><em>Один понятный процесс.</em></h2></div><button className="text-link" onClick={() => go('/orders/new')} data-testid="button-platform-request">Создать заявку <ArrowRight size={15} /></button></div>
-      <div className="platform-list">{PLATFORMS.map((platform, i) => <button className="platform-row" key={platform} onClick={() => go('/orders/new')} data-testid={`button-platform-${platform}`}><span className="platform-num">0{i + 1}</span><span className="platform-name">{platform}</span><span className="platform-desc">{['Оригинальные бренды и кроссовки', 'Оптовые предложения от производителей', 'Мода, аксессуары и товары для дома'][i]}</span><ArrowUpRight size={17} /></button>)}</div>
+      <div className="platform-list">{PLATFORMS.map((platform, i) => <button className="platform-row" key={platform} onClick={() => go(`/orders/new?platform=${encodeURIComponent(platform)}`)} data-testid={`button-platform-${platform}`}><span className="platform-num">0{i + 1}</span><span className="platform-name">{platform}</span><span className="platform-desc">{['Оригинальные бренды и кроссовки', 'Оптовые предложения от производителей', 'Мода, аксессуары и товары для дома'][i]}</span><ArrowUpRight size={17} /></button>)}</div>
     </section>
     <section className="process-band"><div className="section-kicker">БЕЗ СЛОЖНЫХ ИНСТРУКЦИЙ</div><div className="process-grid">{[['01', 'Пришлите ссылку', 'Добавьте товар и детали в короткую форму.'], ['02', 'Подтвердите выкуп', 'Менеджер уточнит наличие и итоговую стоимость.'], ['03', 'Следите за статусом', 'Все изменения заказа появятся в личном кабинете.']].map(([num, title, desc]) => <div className="process-item" key={num}><span>{num}</span><h3>{title}</h3><p>{desc}</p></div>)}</div></section>
     <section className="demo-notice"><CircleHelp size={18} /><div><strong>Это демо-версия CHINA BUY</strong><span>Заявки и аккаунты сохраняются только в вашем браузере. Реальный выкуп, оплата и доставка не выполняются.</span></div></section>
@@ -168,7 +178,8 @@ function StatusPill({ status }: { status: Status }) {
   return <span className={`status-pill ${statusClass(status)}`}><span />{status}</span>;
 }
 function statusClass(status: Status) {
-  if (status === 'Получен') return 'status-done';
+  if (status === 'Доставлен') return 'status-done';
+  if (status === 'На складе') return 'status-warehouse';
   if (status === 'В пути') return 'status-transit';
   if (status === 'Выкуплен') return 'status-bought';
   if (status === 'На выкупе') return 'status-process';
@@ -192,7 +203,10 @@ function OrdersPage({ orders, search, setSearch, filter, setFilter, go }: { orde
 }
 
 function NewOrderPage({ account, setOrders, go, notify }: { account?: Account; setOrders: React.Dispatch<React.SetStateAction<Order[]>>; go: (path: string) => void; notify: (s: string) => void }) {
-  const [platform, setPlatform] = useState('POIZON');
+  const [platform, setPlatform] = useState(() => {
+    const requestedPlatform = new URLSearchParams(window.location.search).get('platform');
+    return PLATFORMS.includes(requestedPlatform ?? '') ? requestedPlatform! : 'POIZON';
+  });
   const [url, setUrl] = useState('');
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
@@ -200,22 +214,23 @@ function NewOrderPage({ account, setOrders, go, notify }: { account?: Account; s
   const [comment, setComment] = useState('');
   const [price, setPrice] = useState('');
   const [error, setError] = useState('');
+  const updateQuantity = (value: number) => setQuantity(Math.min(99, Math.max(1, Math.floor(value) || 1)));
   const priceNumber = Number(price) || 0;
   const estimate = Math.round((priceNumber * 12.9 + 450) * quantity);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!/^https?:\/\/.+/i.test(url)) { setError('Укажите полную ссылку на товар, начинающуюся с http:// или https://'); return; }
-    const next: Order = { id: `CB-${Math.floor(24100 + Math.random() * 800)}`, userId: account?.id ?? 'client-1', name: account?.name ?? 'Демо-покупатель', platform, url, size, color, quantity, comment, status: 'Новая заявка', created: new Intl.DateTimeFormat('ru-RU').format(new Date()) };
+    const next: Order = { id: `CB-${Date.now()}`, userId: account?.id ?? 'client-1', name: account?.name ?? 'Демо-покупатель', platform, url, size, color, quantity, comment, status: 'Новый', created: new Intl.DateTimeFormat('ru-RU').format(new Date()) };
     setOrders(old => [next, ...old]); notify('Демо-заявка создана'); go('/orders');
   };
   return <div className="content-page">
     <PageHeading kicker="ВАШ КАБИНЕТ / 02" title="Новая заявка" description="Пришлите ссылку и укажите детали. Менеджер проверит товар и наличие." />
     <form className="order-form-layout" onSubmit={submit}>
       <div className="form-card"><div className="form-card-heading"><span>01</span><div><h2>О товаре</h2><p>Скопируйте ссылку на выбранную позицию.</p></div></div>
-        <label className="field-label">ПЛОЩАДКА</label><div className="platform-select">{PLATFORMS.map(item => <button type="button" key={item} className={platform === item ? 'platform-choice selected' : 'platform-choice'} onClick={() => setPlatform(item)} data-testid={`button-select-${item}`}>{item}{platform === item && <Check size={14} />}</button>)}</div>
+        <label className="field-label">ПЛОЩАДКА</label><div className="platform-select" role="group" aria-label="Площадка">{PLATFORMS.map(item => <button type="button" key={item} className={platform === item ? 'platform-choice selected' : 'platform-choice'} aria-pressed={platform === item} onClick={() => setPlatform(item)} data-testid={`button-select-${item}`}>{item}{platform === item && <Check size={14} />}</button>)}</div>
         <label className="field-label" htmlFor="product-url">ССЫЛКА НА ТОВАР <span>*</span></label><input id="product-url" required type="url" placeholder="https://..." value={url} onChange={e => { setUrl(e.target.value); setError(''); }} data-testid="input-product-url" />
         <div className="form-two-col"><div><label className="field-label" htmlFor="product-size">РАЗМЕР</label><input id="product-size" placeholder="Например, 38 EU" value={size} onChange={e => setSize(e.target.value)} data-testid="input-product-size" /></div><div><label className="field-label" htmlFor="product-color">ЦВЕТ</label><input id="product-color" placeholder="Например, графит" value={color} onChange={e => setColor(e.target.value)} data-testid="input-product-color" /></div></div>
-        <div className="form-two-col quantity-row"><div><label className="field-label" htmlFor="quantity">КОЛИЧЕСТВО</label><div className="quantity-control"><button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="Уменьшить количество" data-testid="button-quantity-minus">−</button><input id="quantity" type="number" min="1" max="99" value={quantity} onChange={e => setQuantity(Math.max(1, Number(e.target.value)))} data-testid="input-quantity" /><button type="button" onClick={() => setQuantity(Math.min(99, quantity + 1))} aria-label="Увеличить количество" data-testid="button-quantity-plus">+</button></div></div><div><label className="field-label" htmlFor="product-price">ЦЕНА НА ПЛОЩАДКЕ, ¥</label><input id="product-price" type="number" min="0" step="0.01" placeholder="Необязательно" value={price} onChange={e => setPrice(e.target.value)} data-testid="input-product-price" /></div></div>
+        <div className="form-two-col quantity-row"><div><label className="field-label" htmlFor="quantity">КОЛИЧЕСТВО</label><div className="quantity-control"><button type="button" onClick={() => updateQuantity(quantity - 1)} aria-label="Уменьшить количество" data-testid="button-quantity-minus">−</button><input id="quantity" type="number" min="1" max="99" value={quantity} onChange={e => updateQuantity(Number(e.target.value))} data-testid="input-quantity" /><button type="button" onClick={() => updateQuantity(quantity + 1)} aria-label="Увеличить количество" data-testid="button-quantity-plus">+</button></div></div><div><label className="field-label" htmlFor="product-price">ЦЕНА НА ПЛОЩАДКЕ, ¥</label><input id="product-price" type="number" min="0" step="0.01" placeholder="Необязательно" value={price} onChange={e => setPrice(e.target.value)} data-testid="input-product-price" /></div></div>
         <label className="field-label" htmlFor="product-comment">КОММЕНТАРИЙ</label><textarea id="product-comment" rows={4} placeholder="Важные пожелания к выкупу или проверке товара" value={comment} onChange={e => setComment(e.target.value)} data-testid="input-product-comment" />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-submit-row"><button className="button button-gold" type="submit" data-testid="button-submit-order">Отправить заявку <ArrowRight size={15} /></button><span>Продолжая, вы отправляете демонстрационную заявку.</span></div>
@@ -286,7 +301,7 @@ function AdminPage({ isAdmin, orders, setOrders, accounts, go, notify }: { isAdm
   const [query, setQuery] = useState('');
   const updateStatus = (id: string, status: Status) => { setOrders(current => current.map(order => order.id === id ? { ...order, status } : order)); notify(`Статус ${id} обновлен`); };
   const filteredOrders = orders.filter(order => `${order.id} ${order.name} ${order.platform}`.toLowerCase().includes(query.toLowerCase()));
-  const activeCount = orders.filter(order => order.status !== 'Получен').length;
+  const activeCount = orders.filter(order => order.status !== 'Доставлен').length;
   if (!isAdmin) return <div className="access-denied"><div className="access-icon"><ShieldCheck /></div><div className="section-kicker">ДОСТУП МЕНЕДЖЕРА</div><h1>Эта страница<br /><em>для команды.</em></h1><p>Переключитесь в демо-режим менеджера, чтобы посмотреть управление заявками и клиентами.</p><button className="button button-gold" onClick={() => go('/auth')} data-testid="button-admin-signin">Открыть демо-доступ <ArrowRight size={15} /></button></div>;
   return <div className="content-page admin-page"><PageHeading kicker="УПРАВЛЕНИЕ / DEMO" title="Панель менеджера" description="Заявки и клиенты этого браузера. Все изменения демонстрационные." />
     <div className="admin-metrics"><div><span>ЗАЯВОК ВСЕГО</span><strong>{String(orders.length).padStart(2, '0')}</strong><small><ClipboardList size={13} />в системе</small></div><div><span>В РАБОТЕ</span><strong>{String(activeCount).padStart(2, '0')}</strong><small><ArrowDownRight size={13} />не получены клиентом</small></div><div><span>ДЕМО-КЛИЕНТОВ</span><strong>{String(accounts.filter(user => user.role === 'client').length).padStart(2, '0')}</strong><small><UserRound size={13} />профилей в браузере</small></div></div>

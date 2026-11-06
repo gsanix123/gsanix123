@@ -1,5 +1,5 @@
 import express, { type Express } from "express";
-import cors from "cors";
+import path from "node:path";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -25,10 +25,29 @@ app.use(
     },
   }),
 );
-app.use(cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+if (process.env.NODE_ENV === "production") {
+  const frontendDist = path.resolve(
+    process.cwd(),
+    "artifacts/china-buy/dist/public",
+  );
+
+  app.use(express.static(frontendDist));
+
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) {
+      return next();
+    }
+
+    res.sendFile(path.join(frontendDist, "index.html"), (err) => {
+      if (err) next(err);
+    });
+  });
+}
 
 export default app;

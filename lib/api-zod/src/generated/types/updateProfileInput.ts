@@ -12,8 +12,6 @@ export interface UpdateProfileInput {
      * @maxLength 120
      */
   name: string;
-  /** @maxLength 254 */
-  email: string;
   /** @maxLength 40 */
   phone: string;
   /** @maxLength 120 */

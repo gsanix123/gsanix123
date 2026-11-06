@@ -18,60 +18,20 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Register a customer account
+ * @summary Authenticate through Telegram Mini App
  */
-export const registerBodyNameMax = 120;
-
-export const registerBodyEmailMax = 254;
-
-export const registerBodyPhoneMax = 40;
-
-export const registerBodyPasswordMin = 8;
-export const registerBodyPasswordMax = 128;
+export const authenticateTelegramBodyInitDataMax = 4096;
 
 
 
-export const RegisterBody = zod.object({
-  "name": zod.string().min(1).max(registerBodyNameMax),
-  "email": zod.string().email().max(registerBodyEmailMax),
-  "phone": zod.string().max(registerBodyPhoneMax).optional(),
-  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax)
+export const AuthenticateTelegramBody = zod.object({
+  "initData": zod.string().min(1).max(authenticateTelegramBodyInitDataMax)
 })
 
-export const RegisterResponse = zod.object({
+export const AuthenticateTelegramResponse = zod.object({
   "user": zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
-  "phone": zod.string(),
-  "city": zod.string(),
-  "address": zod.string(),
-  "role": zod.enum(['customer', 'admin']),
-  "createdAt": zod.coerce.date()
-})
-})
-
-
-/**
- * @summary Sign in with email and password
- */
-export const loginBodyEmailMax = 254;
-
-export const loginBodyPasswordMin = 8;
-export const loginBodyPasswordMax = 128;
-
-
-
-export const LoginBody = zod.object({
-  "email": zod.string().email().max(loginBodyEmailMax),
-  "password": zod.string().min(loginBodyPasswordMin).max(loginBodyPasswordMax)
-})
-
-export const LoginResponse = zod.object({
-  "user": zod.object({
-  "id": zod.string().uuid(),
-  "name": zod.string(),
-  "email": zod.string().email(),
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
@@ -94,7 +54,6 @@ export const GetCurrentUserResponse = zod.object({
   "user": zod.union([zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
@@ -109,8 +68,6 @@ export const GetCurrentUserResponse = zod.object({
  */
 export const updateCurrentUserBodyNameMax = 120;
 
-export const updateCurrentUserBodyEmailMax = 254;
-
 export const updateCurrentUserBodyPhoneMax = 40;
 
 export const updateCurrentUserBodyCityMax = 120;
@@ -121,7 +78,6 @@ export const updateCurrentUserBodyAddressMax = 500;
 
 export const UpdateCurrentUserBody = zod.object({
   "name": zod.string().min(1).max(updateCurrentUserBodyNameMax),
-  "email": zod.string().email().max(updateCurrentUserBodyEmailMax),
   "phone": zod.string().max(updateCurrentUserBodyPhoneMax),
   "city": zod.string().max(updateCurrentUserBodyCityMax),
   "address": zod.string().max(updateCurrentUserBodyAddressMax)
@@ -131,7 +87,6 @@ export const UpdateCurrentUserResponse = zod.object({
   "user": zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
@@ -147,7 +102,6 @@ export const UpdateCurrentUserResponse = zod.object({
 export const ListUsersResponseItem = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "email": zod.string().email(),
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),

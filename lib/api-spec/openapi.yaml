@@ -30,42 +30,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /auth/register:
+  /auth/telegram:
     post:
-      operationId: register
+      operationId: authenticateTelegram
       tags: [auth]
-      summary: Register a customer account
+      summary: Authenticate through Telegram Mini App
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterInput"
-      responses:
-        "201":
-          description: Account created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "409":
-          $ref: "#/components/responses/Conflict"
-  /auth/login:
-    post:
-      operationId: login
-      tags: [auth]
-      summary: Sign in with email and password
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginInput"
+              $ref: "#/components/schemas/TelegramAuthInput"
       responses:
         "200":
-          description: Signed in
+          description: Authenticated successfully
           content:
             application/json:
               schema:
@@ -304,13 +282,12 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        email: { type: string, format: email }
         phone: { type: string }
         city: { type: string }
         address: { type: string }
         role: { $ref: "#/components/schemas/UserRole" }
         createdAt: { type: string, format: date-time }
-      required: [id, name, email, phone, city, address, role, createdAt]
+      required: [id, name, phone, city, address, role, createdAt]
     UserList:
       type: array
       items:
@@ -329,29 +306,23 @@ components:
             - $ref: "#/components/schemas/User"
             - type: "null"
       required: [user]
-    RegisterInput:
+    TelegramAuthInput:
       type: object
       properties:
-        name: { type: string, minLength: 1, maxLength: 120 }
-        email: { type: string, format: email, maxLength: 254 }
-        phone: { type: string, maxLength: 40 }
-        password: { type: string, minLength: 8, maxLength: 128 }
-      required: [name, email, password]
-    LoginInput:
-      type: object
-      properties:
-        email: { type: string, format: email, maxLength: 254 }
-        password: { type: string, minLength: 8, maxLength: 128 }
-      required: [email, password]
+        initData:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      required: [initData]
     UpdateProfileInput:
       type: object
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
-        email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, maxLength: 40 }
         city: { type: string, maxLength: 120 }
         address: { type: string, maxLength: 500 }
-      required: [name, email, phone, city, address]
+      required: [name, phone, city, address]
+
     OrderRecord:
       type: object
       properties:

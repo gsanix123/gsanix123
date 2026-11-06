@@ -1,76 +1,55 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
 import {
+  AuthenticateTelegramBody,
+  AuthenticateTelegramResponse,
   GetCurrentUserResponse,
-  LoginBody,
-  LoginResponse,
-  LogoutResponse,
-  RegisterBody,
-  RegisterResponse,
 } from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import {
   clearSessionCookie,
-  hashPassword,
-  isUniqueViolation,
   optionalAuth,
-  requireAuth,
   setSessionCookie,
   toPublicUser,
-  verifyPassword,
+  verifyTelegramInitData,
 } from "../lib/auth";
 
 const router: IRouter = Router();
 
-router.post("/auth/register", async (req, res): Promise<void> => {
-  const parsed = RegisterBody.safeParse(req.body);
+router.post("/auth/telegram", async (req, res): Promise<void> => {
+  const parsed = AuthenticateTelegramBody.safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
-  const email = parsed.data.email.trim().toLowerCase();
-  const passwordHash = await hashPassword(parsed.data.password);
+  const telegramUser = verifyTelegramInitData(parsed.data.initData);
 
-  try {
-    const [user] = await db
-      .insert(usersTable)
-      .values({
-        name: parsed.data.name.trim(),
-        email,
-        phone: parsed.data.phone?.trim() ?? "",
-        passwordHash,
-        role: "customer",
-      })
-      .returning();
-
-    setSessionCookie(res, user.id);
-    res.status(201).json(RegisterResponse.parse({ user: toPublicUser(user) }));
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      res.status(409).json({ error: "Аккаунт с этой почтой уже существует." });
-      return;
-    }
-    throw error;
-  }
-});
-
-router.post("/auth/login", async (req, res): Promise<void> => {
-  const parsed = LoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  if (!telegramUser) {
+    res.status(401).json({ error: "Не удалось подтвердить данные Telegram." });
     return;
   }
 
-  const email = parsed.data.email.trim().toLowerCase();
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-    res.status(401).json({ error: "Неверная почта или пароль." });
-    return;
-  }
+  const name = [telegramUser.first_name, telegramUser.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 120);
+
+  const [user] = await db
+    .insert(usersTable)
+    .values({
+      telegramId: telegramUser.id,
+      name,
+    })
+    .onConflictDoUpdate({
+      target: usersTable.telegramId,
+      set: { name },
+    })
+    .returning();
 
   setSessionCookie(res, user.id);
-  res.json(LoginResponse.parse({ user: toPublicUser(user) }));
+
+  res.json(AuthenticateTelegramResponse.parse({ user: toPublicUser(user) }));
 });
 
 router.post("/auth/logout", (_req, res): void => {

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
@@ -6,8 +6,6 @@ import { db, usersTable, type User } from "@workspace/db";
 
 const SESSION_COOKIE = "china_buy_session";
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 14;
-const PASSWORD_KEY_LENGTH = 64;
-const scryptAsync = promisify(scrypt);
 
 declare global {
   namespace Express {
@@ -25,23 +23,94 @@ function getSessionSecret(): string {
   return secret;
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("base64url");
-  const key = (await scryptAsync(password, salt, PASSWORD_KEY_LENGTH)) as Buffer;
-  return `scrypt$${salt}$${key.toString("base64url")}`;
-}
+export type TelegramWebAppUser = {
+  id: string;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+};
 
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [scheme, salt, encodedKey] = storedHash.split("$");
-  if (scheme !== "scrypt" || !salt || !encodedKey) return false;
+export function verifyTelegramInitData(
+  initData: string,
+): TelegramWebAppUser | null {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
-  const expected = Buffer.from(encodedKey, "base64url");
-  const actual = (await scryptAsync(password, salt, expected.length)) as Buffer;
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
+  if (!botToken) {
+    throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
+  }
+
+  const params = new URLSearchParams(initData);
+  const receivedHash = params.get("hash");
+
+  if (!receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash)) {
+    return null;
+  }
+
+  params.delete("hash");
+
+  const dataCheckString = [...params.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n");
+
+  const secretKey = createHmac("sha256", "WebAppData")
+    .update(botToken)
+    .digest();
+
+  const calculatedHash = createHmac("sha256", secretKey)
+    .update(dataCheckString)
+    .digest("hex");
+
+  const received = Buffer.from(receivedHash, "hex");
+  const calculated = Buffer.from(calculatedHash, "hex");
+
+  if (
+    received.length !== calculated.length ||
+    !timingSafeEqual(received, calculated)
+  ) {
+    return null;
+  }
+
+  const authDate = Number(params.get("auth_date"));
+
+  if (
+    !Number.isFinite(authDate) ||
+    authDate > Math.floor(Date.now() / 1000) + 60 ||
+    Math.floor(Date.now() / 1000) - authDate > 86400
+  ) {
+    return null;
+  }
+
+  try {
+    const userData = params.get("user");
+
+    if (!userData) return null;
+
+    const user = JSON.parse(userData);
+
+    if (
+      (typeof user.id !== "number" && typeof user.id !== "string") ||
+      !user.first_name ||
+      typeof user.first_name !== "string"
+    ) {
+      return null;
+    }
+    return {
+      id: String(user.id),
+      first_name: user.first_name,
+      last_name:
+        typeof user.last_name === "string" ? user.last_name : undefined,
+      username: typeof user.username === "string" ? user.username : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function signPayload(payload: string): string {
-  return createHmac("sha256", getSessionSecret()).update(payload).digest("base64url");
+  return createHmac("sha256", getSessionSecret())
+    .update(payload)
+    .digest("base64url");
 }
 
 function createSessionToken(userId: string): string {
@@ -60,10 +129,16 @@ function verifySessionToken(token: string): { userId: string } | null {
 
   const expected = Buffer.from(signPayload(payload), "base64url");
   const received = Buffer.from(signature, "base64url");
-  if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null;
+  if (
+    expected.length !== received.length ||
+    !timingSafeEqual(expected, received)
+  )
+    return null;
 
   try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+    const parsed = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8"),
+    ) as {
       userId?: unknown;
       expiresAt?: unknown;
     };
@@ -160,7 +235,11 @@ export async function optionalAuth(
   next();
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (req.authUser?.role !== "admin") {
     res.status(403).json({ error: "Недостаточно прав для этого действия." });
     return;
@@ -181,7 +260,6 @@ export function toPublicUser(user: User) {
   return {
     id: user.id,
     name: user.name,
-    email: user.email,
     phone: user.phone,
     city: user.city,
     address: user.address,

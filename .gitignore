@@ -53,3 +53,8 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.neon
+.env
+.env.*
+.config/chromium/
+.env.local

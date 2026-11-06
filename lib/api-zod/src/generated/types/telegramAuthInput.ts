@@ -6,12 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface LoginInput {
-  /** @maxLength 254 */
-  email: string;
+export interface TelegramAuthInput {
   /**
-     * @minLength 8
-     * @maxLength 128
+     * @minLength 1
+     * @maxLength 4096
      */
-  password: string;
+  initData: string;
 }

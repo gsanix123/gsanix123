@@ -12,7 +12,7 @@ if (!rawPort) {
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error("Invalid PORT value: " + rawPort);
 }
 
 app.listen(port, (err) => {

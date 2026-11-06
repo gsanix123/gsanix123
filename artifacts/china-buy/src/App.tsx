@@ -10,9 +10,8 @@ import {
   getCurrentUser,
   listOrders,
   listUsers,
-  login as loginApi,
+  authenticateTelegram,
   logout as logoutApi,
-  register as registerApi,
   updateCurrentUser as updateCurrentUserApi,
   updateOrderStatus as updateOrderStatusApi,
   type CreateOrderInput,
@@ -72,8 +71,8 @@ function AppShell() {
   const [filter, setFilter] = useState('Все статусы');
   const isAdmin = account?.role === 'admin';
   const activeProfile: Profile = account
-    ? { name: account.name, email: account.email, phone: account.phone, city: account.city, address: account.address }
-    : { name: '', email: '', phone: '', city: '', address: '' };
+  ? { name: account.name, phone: account.phone, city: account.city, address: account.address }
+  : { name: '', phone: '', city: '', address: '' };
   const go = (route: string) => { setPath(route); setMobileMenu(false); };
 
   useEffect(() => {
@@ -316,48 +315,83 @@ function NewOrderPage({ onCreate, go }: { onCreate: (input: CreateOrderInput) =>
 }
 
 function AuthPage({ onAuthenticated, go, notify }: { onAuthenticated: (user: Account) => void; go: (path: string) => void; notify: (s: string) => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (mode === 'register' && password.length < 8) {
-      setError('Пароль должен содержать не менее 8 символов.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    try {
-      const response = mode === 'register'
-        ? await registerApi({ name, email, phone, password })
-        : await loginApi({ email, password });
-      onAuthenticated(response.user);
-      notify(mode === 'register' ? 'Аккаунт создан' : 'Вход выполнен');
-      go('/');
-    } catch (requestError) {
-      setError(getErrorMessage(requestError, 'Не удалось выполнить вход. Проверьте данные.'));
-    } finally {
-      setSaving(false);
-    }
-  };
-  return <div className="auth-layout">
-    <section className="auth-intro"><div className="section-kicker">CHINA BUY</div><h1>Покупки,<br /><em>которые ближе.</em></h1><p>Один кабинет для заказов с любимых китайских площадок. Просто, прозрачно, по шагам.</p><div className="auth-quote"><span>«</span><strong>Сначала ссылка.<br />Дальше мы рядом.</strong><small>ПОДХОД CHINA BUY</small></div></section>
-    <section className="auth-card"><div className="auth-tabs"><button className={mode === 'login' ? 'tab-active' : ''} onClick={() => { setMode('login'); setError(''); }} data-testid="button-auth-login-tab">Войти</button><button className={mode === 'register' ? 'tab-active' : ''} onClick={() => { setMode('register'); setError(''); }} data-testid="button-auth-register-tab">Регистрация</button></div>
-      <h2>{mode === 'login' ? 'Рады видеть вас' : 'Создать аккаунт'}</h2><p className="auth-sub">{mode === 'login' ? 'Войдите, чтобы открыть свои заявки и профиль.' : 'После регистрации вы сможете создавать и отслеживать заявки.'}</p>
-      <form onSubmit={submit}>{mode === 'register' && <><label className="field-label" htmlFor="auth-name">ИМЯ</label><input id="auth-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Ваше имя" data-testid="input-auth-name" /></>}
-        <label className="field-label" htmlFor="auth-email">ЭЛЕКТРОННАЯ ПОЧТА</label><input id="auth-email" required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.ru" data-testid="input-auth-email" />
-        {mode === 'register' && <><label className="field-label" htmlFor="auth-phone">ТЕЛЕФОН</label><input id="auth-phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 ___ ___-__-__" data-testid="input-auth-phone" /></>}
-        <label className="field-label" htmlFor="auth-password">ПАРОЛЬ</label><input id="auth-password" required type="password" minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} placeholder="Не менее 8 символов" data-testid="input-auth-password" />
-        {error && <p className="form-error" role="alert">{error}</p>}<button type="submit" disabled={saving} className="button button-dark auth-submit" data-testid="button-auth-submit">{saving ? 'Подождите…' : mode === 'login' ? 'Войти в кабинет' : 'Зарегистрироваться'} <ArrowRight size={15} /></button>
-      </form>
-      <div className="demo-access"><div className="section-kicker">ВАШИ ДАННЫЕ</div><p>Заказы будут доступны только после входа в ваш аккаунт. Демо-аккаунты отключены.</p></div>
-      <div className="auth-warning"><ShieldCheck size={15} />Пароль хранится на сервере в виде защищенного хэша, не в браузере.</div>
-    </section>
-  </div>;
+  const [saving, setSaving] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    const authenticate = async () => {
+      try {
+        const telegram = (
+          window as Window & {
+            Telegram?: {
+              WebApp?: {
+                initData?: string;
+                ready?: () => void;
+                expand?: () => void;
+              };
+            };
+          }
+        ).Telegram?.WebApp;
+
+        telegram?.ready?.();
+        telegram?.expand?.();
+
+        const initData = telegram?.initData;
+
+        if (!initData) {
+          throw new Error('Откройте приложение через Telegram.');
+        }
+
+        const response = await authenticateTelegram({ initData });
+
+        if (!active) return;
+
+        onAuthenticated(response.user);
+        notify('Вход через Telegram выполнен');
+        go('/');
+      } catch (requestError) {
+        if (!active) return;
+
+        setError(
+          getErrorMessage(
+            requestError,
+            'Не удалось выполнить вход через Telegram.'
+          )
+        );
+        setSaving(false);
+      }
+    };
+
+    void authenticate();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <div className="auth-layout">
+      <section className="auth-intro">
+        <div className="section-kicker">CHINA BUY</div>
+        <h1>Покупки,<br /><em>которые ближе.</em></h1>
+        <p>Один кабинет для заказов с любимых китайских площадок. Просто, прозрачно, по шагам.</p>
+      </section>
+
+      <section className="auth-card">
+        <ShieldCheck size={32} />
+        <h2>Вход через Telegram</h2>
+        <p className="auth-sub">
+          Авторизация происходит автоматически через ваш аккаунт Telegram.
+        </p>
+
+        {saving && <p>Подключаем ваш аккаунт…</p>}
+
+        {error && <p className="form-error" role="alert">{error}</p>}
+      </section>
+    </div>
+  );
 }
 
 function ProfilePage({ profile, account, go, onSave, onLogout }: { profile: Profile; account?: Account; go: (path: string) => void; onSave: (profile: Profile) => Promise<void>; onLogout: () => Promise<void> }) {
@@ -373,16 +407,15 @@ function ProfilePage({ profile, account, go, onSave, onLogout }: { profile: Prof
     catch (requestError) { setError(getErrorMessage(requestError, 'Не удалось сохранить профиль.')); }
     finally { setSaving(false); }
   };
-  const reset = () => { setDraft({ name: account?.name ?? '', email: account?.email ?? '', phone: account?.phone ?? '', city: '', address: '' }); };
+  const reset = () => { setDraft({ name: account?.name ?? '', phone: account?.phone ?? '', city: '', address: '' }); };
   return <div className="content-page"><PageHeading kicker="ВАШ КАБИНЕТ / 03" title="Профиль" description="Контактные данные для связи по вашим заявкам." />
     <div className="profile-layout"><form className="form-card profile-form" onSubmit={save}><div className="form-card-heading"><span>01</span><div><h2>Личные данные</h2><p>Обновите контакты, чтобы менеджер мог связаться с вами.</p></div></div>
       <label className="field-label" htmlFor="profile-name">ИМЯ</label><input id="profile-name" required value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} data-testid="input-profile-name" />
-      <label className="field-label" htmlFor="profile-email">ЭЛЕКТРОННАЯ ПОЧТА</label><input id="profile-email" required type="email" value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} data-testid="input-profile-email" />
       <label className="field-label" htmlFor="profile-phone">ТЕЛЕФОН</label><input id="profile-phone" type="tel" value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} data-testid="input-profile-phone" />
       <div className="form-two-col"><div><label className="field-label" htmlFor="profile-city">ГОРОД</label><input id="profile-city" value={draft.city} onChange={e => setDraft({ ...draft, city: e.target.value })} placeholder="Например, Москва" data-testid="input-profile-city" /></div><div><label className="field-label" htmlFor="profile-address">АДРЕС ДОСТАВКИ</label><input id="profile-address" value={draft.address} onChange={e => setDraft({ ...draft, address: e.target.value })} placeholder="Можно заполнить позже" data-testid="input-profile-address" /></div></div>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-submit-row"><button className="button button-gold" type="submit" disabled={saving} data-testid="button-save-profile">{saving ? 'Сохраняем…' : 'Сохранить изменения'} <Check size={15} /></button><button type="button" className="text-link" onClick={reset} data-testid="button-reset-profile">Сбросить</button></div></form>
-      <aside className="profile-side"><div className="profile-avatar">{account?.name?.charAt(0) ?? 'А'}</div><div className="section-kicker">АККАУНТ</div><strong>{account?.name}</strong><span>{account?.email}</span><div className="profile-side-rule" /><span className="profile-role"><UserRound size={14} />{account?.role === 'admin' ? 'Роль: администратор' : 'Роль: клиент'}</span><button className="text-link" onClick={() => void onLogout()} data-testid="button-logout">Выйти из аккаунта <ArrowUpRight size={14} /></button><p>Профиль и заявки хранятся на сервере.</p></aside></div>
+      <aside className="profile-side"><div className="profile-avatar">{account?.name?.charAt(0) ?? 'А'}</div><div className="section-kicker">АККАУНТ</div><strong>{account?.name}</strong><span>{account?.phone || 'Телефон не указан'}</span><div className="profile-side-rule" /><span className="profile-role"><UserRound size={14} />{account?.role === 'admin' ? 'Роль: администратор' : 'Роль: клиент'}</span><button className="text-link" onClick={() => void onLogout()} data-testid="button-logout">Выйти из аккаунта <ArrowUpRight size={14} /></button><p>Профиль и заявки хранятся на сервере.</p></aside></div>
   </div>;
 }
 
@@ -404,7 +437,7 @@ function AdminPage({ isAdmin, orders, onUpdateStatus, accounts, go, loading }: {
     <div className="admin-orders">{filteredOrders.map(order => <article className="admin-order-row" key={order.id} data-testid={`admin-order-${order.id}`}><div className="admin-order-main"><span className="admin-order-id">{order.id.slice(0, 8).toUpperCase()} <small>{order.created}</small></span><strong>{order.name}</strong><span>{order.platform} · {order.quantity} шт. {order.size && `· ${order.size}`}</span></div><a href={order.url} target="_blank" rel="noreferrer" className="admin-product-link" aria-label={`Открыть товар ${order.id}`}><ArrowUpRight size={15} />Товар</a><label className="sr-only" htmlFor={`status-${order.id}`}>Статус заявки {order.id}</label><select id={`status-${order.id}`} value={order.status} onChange={e => void updateStatus(order.id, e.target.value as Status)} aria-label={`Изменить статус ${order.id}`} data-testid={`select-status-${order.id}`}>{STATUSES.map(status => <option key={status}>{status}</option>)}</select></article>)}
       {!filteredOrders.length && <div className="empty-state"><Package size={28} /><strong>{loading ? 'Загружаем заявки…' : 'Заявки не найдены'}</strong><span>{loading ? 'Получаем данные с сервера.' : 'Поменяйте поисковый запрос или дождитесь первой заявки.'}</span></div>}</div>
     <div className="admin-section-head customers-head"><div><div className="section-kicker">КЛИЕНТСКАЯ БАЗА</div><h2>Профили <span>{accounts.filter(user => user.role === 'customer').length}</span></h2></div><span className="muted-copy">Аккаунты из базы данных</span></div>
-    <div className="customer-list">{accounts.filter(user => user.role === 'customer').map(user => <div className="customer-row" key={user.id} data-testid={`customer-${user.id}`}><div className="customer-avatar">{user.name.charAt(0)}</div><div className="customer-info"><strong>{user.name}</strong><span>{user.email}</span></div><span className="customer-phone">{user.phone || 'Телефон не указан'}</span><span className="customer-order-count">{orders.filter(order => order.userId === user.id).length} заяв.</span></div>)}</div>
+    <div className="customer-list">{accounts.filter(user => user.role === 'customer').map(user => <div className="customer-row" key={user.id} data-testid={`customer-${user.id}`}><div className="customer-avatar">{user.name.charAt(0)}</div><div className="customer-info"><strong>{user.name}</strong><span>Telegram</span></div><span className="customer-phone">{user.phone || 'Телефон не указан'}</span><span className="customer-order-count">{orders.filter(order => order.userId === user.id).length} заяв.</span></div>)}</div>
     <div className="admin-disclaimer"><ShieldCheck size={16} />Права администратора проверяются сервером.</div>
   </div>;
 }

@@ -45,7 +45,6 @@ export const OrderStatus = {
 export interface User {
   id: string;
   name: string;
-  email: string;
   phone: string;
   city: string;
   address: string;
@@ -63,31 +62,12 @@ export interface CurrentUserResponse {
   user: User | null;
 }
 
-export interface RegisterInput {
+export interface TelegramAuthInput {
   /**
      * @minLength 1
-     * @maxLength 120
+     * @maxLength 4096
      */
-  name: string;
-  /** @maxLength 254 */
-  email: string;
-  /** @maxLength 40 */
-  phone?: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  password: string;
-}
-
-export interface LoginInput {
-  /** @maxLength 254 */
-  email: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  password: string;
+  initData: string;
 }
 
 export interface UpdateProfileInput {
@@ -96,8 +76,6 @@ export interface UpdateProfileInput {
      * @maxLength 120
      */
   name: string;
-  /** @maxLength 254 */
-  email: string;
   /** @maxLength 40 */
   phone: string;
   /** @maxLength 120 */

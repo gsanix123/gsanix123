@@ -35,15 +35,24 @@ router.post("/auth/telegram", async (req, res): Promise<void> => {
     .join(" ")
     .slice(0, 120);
 
+  const ownerTelegramId = process.env.OWNER_TELEGRAM_ID;
+  const isOwner = Boolean(
+    ownerTelegramId && telegramUser.id === ownerTelegramId,
+  );
+
   const [user] = await db
     .insert(usersTable)
     .values({
       telegramId: telegramUser.id,
       name,
+      ...(isOwner ? { role: "owner" as const } : {}),
     })
     .onConflictDoUpdate({
       target: usersTable.telegramId,
-      set: { name },
+      set: {
+        name,
+        ...(isOwner ? { role: "owner" as const } : {}),
+      },
     })
     .returning();
 

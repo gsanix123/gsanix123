@@ -270,7 +270,7 @@ components:
       required: [error]
     UserRole:
       type: string
-      enum: [customer, admin]
+      enum: [customer, admin, owner]
     OrderPlatform:
       type: string
       enum: [POIZON, "1688", Taobao]

@@ -38,7 +38,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
     .innerJoin(usersTable, eq(ordersTable.userId, usersTable.id));
 
   const orders =
-    req.authUser!.role === "admin"
+    req.authUser!.role === "admin" || req.authUser!.role === "owner"
       ? await baseQuery.orderBy(desc(ordersTable.createdAt))
       : await baseQuery
           .where(eq(ordersTable.userId, req.authUser!.id))
@@ -96,7 +96,7 @@ router.get("/orders/:orderId", requireAuth, async (req, res): Promise<void> => {
   }
 
   const accessFilter =
-    req.authUser!.role === "admin"
+    req.authUser!.role === "admin" || req.authUser!.role === "owner"
       ? eq(ordersTable.id, parsed.data.orderId)
       : and(eq(ordersTable.id, parsed.data.orderId), eq(ordersTable.userId, req.authUser!.id));
 

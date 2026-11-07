@@ -10,7 +10,11 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
-export const userRoleEnum = pgEnum("user_role", ["customer", "admin"]);
+export const userRoleEnum = pgEnum("user_role", [
+  "customer",
+  "admin",
+  "owner",
+]);
 
 export const usersTable = pgTable(
   "users",

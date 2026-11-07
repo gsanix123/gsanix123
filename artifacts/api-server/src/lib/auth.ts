@@ -240,7 +240,10 @@ export function requireAdmin(
   res: Response,
   next: NextFunction,
 ): void {
-  if (req.authUser?.role !== "admin") {
+  if (
+    req.authUser?.role !== "admin" &&
+    req.authUser?.role !== "owner"
+  ) {
     res.status(403).json({ error: "Недостаточно прав для этого действия." });
     return;
   }

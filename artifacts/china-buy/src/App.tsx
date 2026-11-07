@@ -69,7 +69,7 @@ function AppShell() {
   const [toast, setToast] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('Все статусы');
-  const isAdmin = account?.role === 'admin';
+  const isAdmin = account?.role === 'admin' || account?.role === 'owner';
   const activeProfile: Profile = account
   ? { name: account.name, phone: account.phone, city: account.city, address: account.address }
   : { name: '', phone: '', city: '', address: '' };

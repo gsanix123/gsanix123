@@ -35,7 +35,7 @@ export const AuthenticateTelegramResponse = zod.object({
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
-  "role": zod.enum(['customer', 'admin']),
+  "role": zod.enum(['customer', 'admin', 'owner']),
   "createdAt": zod.coerce.date()
 })
 })
@@ -57,7 +57,7 @@ export const GetCurrentUserResponse = zod.object({
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
-  "role": zod.enum(['customer', 'admin']),
+  "role": zod.enum(['customer', 'admin', 'owner']),
   "createdAt": zod.coerce.date()
 }),zod.null()])
 })
@@ -90,7 +90,7 @@ export const UpdateCurrentUserResponse = zod.object({
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
-  "role": zod.enum(['customer', 'admin']),
+  "role": zod.enum(['customer', 'admin', 'owner']),
   "createdAt": zod.coerce.date()
 })
 })
@@ -105,7 +105,7 @@ export const ListUsersResponseItem = zod.object({
   "phone": zod.string(),
   "city": zod.string(),
   "address": zod.string(),
-  "role": zod.enum(['customer', 'admin']),
+  "role": zod.enum(['customer', 'admin', 'owner']),
   "createdAt": zod.coerce.date()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)

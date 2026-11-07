@@ -19,6 +19,7 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 export const UserRole = {
   customer: 'customer',
   admin: 'admin',
+  owner: 'owner',
 } as const;
 
 export type OrderPlatform = typeof OrderPlatform[keyof typeof OrderPlatform];

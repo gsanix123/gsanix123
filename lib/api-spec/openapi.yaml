@@ -327,6 +327,8 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
+        orderNumber: { type: string }
+        title: { type: string }
         userId: { type: string, format: uuid }
         customerName: { type: string }
         platform: { $ref: "#/components/schemas/OrderPlatform" }
@@ -337,7 +339,7 @@ components:
         comment: { type: string }
         status: { $ref: "#/components/schemas/OrderStatus" }
         createdAt: { type: string, format: date-time }
-      required: [id, userId, customerName, platform, url, size, color, quantity, comment, status, createdAt]
+      required: [id, orderNumber, title, userId, customerName, platform, url, size, color, quantity, comment, status, createdAt]
     OrderList:
       type: array
       items:
@@ -345,13 +347,14 @@ components:
     CreateOrderInput:
       type: object
       properties:
+        title: { type: string, minLength: 2, maxLength: 200 }
         platform: { $ref: "#/components/schemas/OrderPlatform" }
         url: { type: string, format: uri, maxLength: 2048 }
         size: { type: string, maxLength: 100 }
         color: { type: string, maxLength: 100 }
         quantity: { type: integer, minimum: 1, maximum: 99 }
         comment: { type: string, maxLength: 2000 }
-      required: [platform, url, quantity]
+      required: [title, platform, url, quantity]
     UpdateOrderStatusInput:
       type: object
       properties:

@@ -87,6 +87,8 @@ export interface UpdateProfileInput {
 
 export interface OrderRecord {
   id: string;
+  orderNumber: string;
+  title: string;
   userId: string;
   customerName: string;
   platform: OrderPlatform;
@@ -106,6 +108,11 @@ export interface OrderRecord {
 export type OrderList = OrderRecord[];
 
 export interface CreateOrderInput {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  title: string;
   platform: OrderPlatform;
   /** @maxLength 2048 */
   url: string;

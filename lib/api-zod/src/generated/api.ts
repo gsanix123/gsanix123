@@ -120,6 +120,8 @@ export const listOrdersResponseQuantityMax = 99;
 
 export const ListOrdersResponseItem = zod.object({
   "id": zod.string().uuid(),
+  "orderNumber": zod.string(),
+  "title": zod.string(),
   "userId": zod.string().uuid(),
   "customerName": zod.string(),
   "platform": zod.enum(['POIZON', '1688', 'Taobao']),
@@ -137,6 +139,9 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 /**
  * @summary Create an order for the signed-in customer
  */
+export const createOrderBodyTitleMin = 2;
+export const createOrderBodyTitleMax = 200;
+
 export const createOrderBodyUrlMax = 2048;
 
 export const createOrderBodySizeMax = 100;
@@ -150,6 +155,7 @@ export const createOrderBodyCommentMax = 2000;
 
 
 export const CreateOrderBody = zod.object({
+  "title": zod.string().min(createOrderBodyTitleMin).max(createOrderBodyTitleMax),
   "platform": zod.enum(['POIZON', '1688', 'Taobao']),
   "url": zod.string().url().max(createOrderBodyUrlMax),
   "size": zod.string().max(createOrderBodySizeMax).optional(),
@@ -164,6 +170,8 @@ export const createOrderResponseQuantityMax = 99;
 
 export const CreateOrderResponse = zod.object({
   "id": zod.string().uuid(),
+  "orderNumber": zod.string(),
+  "title": zod.string(),
   "userId": zod.string().uuid(),
   "customerName": zod.string(),
   "platform": zod.enum(['POIZON', '1688', 'Taobao']),
@@ -190,6 +198,8 @@ export const getOrderResponseQuantityMax = 99;
 
 export const GetOrderResponse = zod.object({
   "id": zod.string().uuid(),
+  "orderNumber": zod.string(),
+  "title": zod.string(),
   "userId": zod.string().uuid(),
   "customerName": zod.string(),
   "platform": zod.enum(['POIZON', '1688', 'Taobao']),
@@ -220,6 +230,8 @@ export const updateOrderStatusResponseQuantityMax = 99;
 
 export const UpdateOrderStatusResponse = zod.object({
   "id": zod.string().uuid(),
+  "orderNumber": zod.string(),
+  "title": zod.string(),
   "userId": zod.string().uuid(),
   "customerName": zod.string(),
   "platform": zod.enum(['POIZON', '1688', 'Taobao']),

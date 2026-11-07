@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { index, integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
@@ -18,6 +18,8 @@ export const ordersTable = pgTable(
   "orders",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    orderNumber: serial("order_number").notNull(),
+    title: varchar("title", { length: 200 }).notNull().default(""),
     userId: uuid("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
@@ -35,6 +37,7 @@ export const ordersTable = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
+    uniqueIndex("orders_order_number_idx").on(table.orderNumber),
     index("orders_user_id_idx").on(table.userId),
     index("orders_created_at_idx").on(table.createdAt),
   ],

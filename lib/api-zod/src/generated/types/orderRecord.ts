@@ -10,6 +10,8 @@ import type { OrderStatus } from './orderStatus';
 
 export interface OrderRecord {
   id: string;
+  orderNumber: string;
+  title: string;
   userId: string;
   customerName: string;
   platform: OrderPlatform;

@@ -8,6 +8,11 @@
 import type { OrderPlatform } from './orderPlatform';
 
 export interface CreateOrderInput {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  title: string;
   platform: OrderPlatform;
   /** @maxLength 2048 */
   url: string;

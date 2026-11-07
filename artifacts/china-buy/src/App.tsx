@@ -35,7 +35,7 @@ const PLATFORMS: CreateOrderInput['platform'][] = ['POIZON', '1688', 'Taobao'];
 const money = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value) + ' ₽';
 const orderFromApi = (order: OrderRecord): Order => ({
   ...order,
-  name: order.customerName,
+  name: order.title,
   created: new Intl.DateTimeFormat('ru-RU').format(new Date(order.createdAt)),
 });
 
@@ -255,7 +255,7 @@ function OrdersPage({ orders, search, setSearch, filter, setFilter, go, loading 
   return <div className="content-page">
     <PageHeading kicker="ВАШ КАБИНЕТ / 01" title="Мои заявки" description="Здесь собраны все товары, которые вы попросили выкупить." action={<button className="button button-gold" onClick={() => go('/orders/new')} data-testid="button-new-order"><Plus size={16} />Новая заявка</button>} />
     <div className="table-tools"><div className="search-wrap"><span className="search-icon">⌕</span><input type="search" aria-label="Поиск заявок" placeholder="Найти заявку или площадку" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search-orders" /></div><select value={filter} onChange={e => setFilter(e.target.value)} aria-label="Фильтр по статусу" data-testid="select-order-filter"><option>Все статусы</option>{STATUSES.map(status => <option key={status}>{status}</option>)}</select><span className="result-count">{shown.length} {shown.length === 1 ? 'заявка' : 'заявки'}</span></div>
-    <div className="orders-table-wrap"><table className="orders-table"><thead><tr><th>НОМЕР / ДАТА</th><th>ТОВАР</th><th>ДЕТАЛИ</th><th>СТАТУС</th><th aria-label="Ссылка" /></tr></thead><tbody>{shown.map(order => <tr key={order.id} data-testid={`row-order-${order.id}`}><td><strong>{order.id}</strong><span>{order.created}</span></td><td><b>{order.platform}</b><span className="product-url">{order.url}</span></td><td><span>{order.size || '—'} · {order.color || 'цвет не указан'}</span><span>{order.quantity} шт.</span></td><td><StatusPill status={order.status} /></td><td><a href={order.url} target="_blank" rel="noreferrer" aria-label={`Открыть товар ${order.id}`} className="table-arrow" data-testid={`link-product-${order.id}`}><ArrowUpRight size={16} /></a></td></tr>)}</tbody></table>
+    <div className="orders-table-wrap"><table className="orders-table"><thead><tr><th>НОМЕР / ДАТА</th><th>ТОВАР</th><th>ДЕТАЛИ</th><th>СТАТУС</th><th aria-label="Ссылка" /></tr></thead><tbody>{shown.map(order => <tr key={order.id} data-testid={`row-order-${order.id}`}><td><strong>{order.orderNumber}</strong><span>{order.created}</span></td><td><b>{order.title}</b><span className="product-url">{order.platform} · {order.url}</span></td><td><span>{order.size || '—'} · {order.color || 'цвет не указан'}</span><span>{order.quantity} шт.</span></td><td><StatusPill status={order.status} /></td><td><a href={order.url} target="_blank" rel="noreferrer" aria-label={`Открыть товар ${order.id}`} className="table-arrow" data-testid={`link-product-${order.id}`}><ArrowUpRight size={16} /></a></td></tr>)}</tbody></table>
       {!shown.length && <div className="empty-state"><Package size={28} /><strong>{loading ? 'Загружаем заявки…' : orders.length ? 'Ничего не найдено' : 'Пока нет заявок'}</strong><span>{loading ? 'Получаем ваши данные с сервера.' : orders.length ? 'Попробуйте изменить запрос или фильтр.' : 'Добавьте ссылку на товар — мы начнем с этого.'}</span>{!loading && !orders.length && <button className="button button-dark" onClick={() => go('/orders/new')} data-testid="button-empty-create">Создать заявку <ArrowRight size={15} /></button>}</div>}
     </div>
     <p className="disclaimer-line"><CircleHelp size={14} /> Все данные и статусы в этой версии демонстрационные.</p>
@@ -269,6 +269,7 @@ function NewOrderPage({ onCreate, go }: { onCreate: (input: CreateOrderInput) =>
       ? requestedPlatform as CreateOrderInput['platform']
       : 'POIZON';
   });
+  const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
@@ -286,7 +287,7 @@ function NewOrderPage({ onCreate, go }: { onCreate: (input: CreateOrderInput) =>
     setSaving(true);
     setError('');
     try {
-      await onCreate({ platform, url, size, color, quantity, comment });
+      await onCreate({ title: title.trim(), platform, url, size, color, quantity, comment });
     } catch (requestError) {
       setError(getErrorMessage(requestError, 'Не удалось сохранить заявку. Попробуйте еще раз.'));
     } finally {
@@ -301,6 +302,16 @@ function NewOrderPage({ onCreate, go }: { onCreate: (input: CreateOrderInput) =>
         <label className="field-label" htmlFor="product-url">ССЫЛКА НА ТОВАР <span>*</span></label><input id="product-url" required type="url" placeholder="https://..." value={url} onChange={e => { setUrl(e.target.value); setError(''); }} data-testid="input-product-url" />
         <div className="form-two-col"><div><label className="field-label" htmlFor="product-size">РАЗМЕР</label><input id="product-size" placeholder="Например, 38 EU" value={size} onChange={e => setSize(e.target.value)} data-testid="input-product-size" /></div><div><label className="field-label" htmlFor="product-color">ЦВЕТ</label><input id="product-color" placeholder="Например, графит" value={color} onChange={e => setColor(e.target.value)} data-testid="input-product-color" /></div></div>
         <div className="form-two-col quantity-row"><div><label className="field-label" htmlFor="quantity">КОЛИЧЕСТВО</label><div className="quantity-control"><button type="button" onClick={() => updateQuantity(quantity - 1)} aria-label="Уменьшить количество" data-testid="button-quantity-minus">−</button><input id="quantity" type="number" min="1" max="99" value={quantity} onChange={e => updateQuantity(Number(e.target.value))} data-testid="input-quantity" /><button type="button" onClick={() => updateQuantity(quantity + 1)} aria-label="Увеличить количество" data-testid="button-quantity-plus">+</button></div></div><div><label className="field-label" htmlFor="product-price">ЦЕНА НА ПЛОЩАДКЕ, ¥</label><input id="product-price" type="number" min="0" step="0.01" placeholder="Необязательно" value={price} onChange={e => setPrice(e.target.value)} data-testid="input-product-price" /></div></div>
+        <label className="field-label" htmlFor="product-title">НАЗВАНИЕ ТОВАРА *</label>
+        <input
+            id="product-title"
+            required
+            minLength={2}
+            maxLength={200}
+            placeholder="Например, кроссовки Nike Air Max"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+        />
         <label className="field-label" htmlFor="product-comment">КОММЕНТАРИЙ</label><textarea id="product-comment" rows={4} placeholder="Важные пожелания к выкупу или проверке товара" value={comment} onChange={e => setComment(e.target.value)} data-testid="input-product-comment" />
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-submit-row"><button className="button button-gold" type="submit" disabled={saving} data-testid="button-submit-order">{saving ? 'Сохраняем…' : 'Отправить заявку'} <ArrowRight size={15} /></button><span>Заявка сохранится в вашем аккаунте и станет доступна менеджеру.</span></div>
@@ -427,14 +438,14 @@ function AdminPage({ isAdmin, orders, onUpdateStatus, accounts, go, loading }: {
     try { await onUpdateStatus(id, status); }
     catch (requestError) { setError(getErrorMessage(requestError, 'Не удалось обновить статус.')); }
   };
-  const filteredOrders = orders.filter(order => `${order.id} ${order.name} ${order.platform}`.toLowerCase().includes(query.toLowerCase()));
+  const filteredOrders = orders.filter(order => [order.orderNumber, order.customerName, order.title, order.platform].join(' ').toLowerCase().includes(query.toLowerCase()));
   const activeCount = orders.filter(order => order.status !== 'Доставлен').length;
   if (!isAdmin) return <div className="access-denied"><div className="access-icon"><ShieldCheck /></div><div className="section-kicker">ДОСТУП АДМИНИСТРАТОРА</div><h1>Эта страница<br /><em>для команды.</em></h1><p>Войдите под аккаунтом с ролью администратора, чтобы управлять заявками.</p><button className="button button-gold" onClick={() => go('/auth')} data-testid="button-admin-signin">Войти в аккаунт <ArrowRight size={15} /></button></div>;
   return <div className="content-page admin-page"><PageHeading kicker="УПРАВЛЕНИЕ" title="Панель менеджера" description="Заявки и клиенты, сохраненные в базе данных." />
     <div className="admin-metrics"><div><span>ЗАЯВОК ВСЕГО</span><strong>{String(orders.length).padStart(2, '0')}</strong><small><ClipboardList size={13} />в системе</small></div><div><span>В РАБОТЕ</span><strong>{String(activeCount).padStart(2, '0')}</strong><small><ArrowDownRight size={13} />не доставлены</small></div><div><span>КЛИЕНТОВ</span><strong>{String(accounts.filter(user => user.role === 'customer').length).padStart(2, '0')}</strong><small><UserRound size={13} />в базе</small></div></div>
     <div className="admin-section-head"><div><div className="section-kicker">ОЧЕРЕДЬ ЗАЯВОК</div><h2>Все заказы <span>{orders.length}</span></h2></div><div className="admin-search"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Поиск по номеру или клиенту" aria-label="Поиск по заявкам" data-testid="input-admin-search" /></div></div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <div className="admin-orders">{filteredOrders.map(order => <article className="admin-order-row" key={order.id} data-testid={`admin-order-${order.id}`}><div className="admin-order-main"><span className="admin-order-id">{order.id.slice(0, 8).toUpperCase()} <small>{order.created}</small></span><strong>{order.name}</strong><span>{order.platform} · {order.quantity} шт. {order.size && `· ${order.size}`}</span></div><a href={order.url} target="_blank" rel="noreferrer" className="admin-product-link" aria-label={`Открыть товар ${order.id}`}><ArrowUpRight size={15} />Товар</a><label className="sr-only" htmlFor={`status-${order.id}`}>Статус заявки {order.id}</label><select id={`status-${order.id}`} value={order.status} onChange={e => void updateStatus(order.id, e.target.value as Status)} aria-label={`Изменить статус ${order.id}`} data-testid={`select-status-${order.id}`}>{STATUSES.map(status => <option key={status}>{status}</option>)}</select></article>)}
+    <div className="admin-orders">{filteredOrders.map(order => <article className="admin-order-row" key={order.id} data-testid={`admin-order-${order.id}`}><div className="admin-order-main"><span className="admin-order-id">{order.orderNumber} <small>{order.created}</small></span><strong>{order.title}</strong><span>{order.customerName} ·{order.platform} · {order.quantity} шт. {order.size && `· ${order.size}`}</span></div><a href={order.url} target="_blank" rel="noreferrer" className="admin-product-link" aria-label={`Открыть товар ${order.id}`}><ArrowUpRight size={15} />Товар</a><label className="sr-only" htmlFor={`status-${order.id}`}>Статус заявки {order.id}</label><select id={`status-${order.id}`} value={order.status} onChange={e => void updateStatus(order.id, e.target.value as Status)} aria-label={`Изменить статус ${order.id}`} data-testid={`select-status-${order.id}`}>{STATUSES.map(status => <option key={status}>{status}</option>)}</select></article>)}
       {!filteredOrders.length && <div className="empty-state"><Package size={28} /><strong>{loading ? 'Загружаем заявки…' : 'Заявки не найдены'}</strong><span>{loading ? 'Получаем данные с сервера.' : 'Поменяйте поисковый запрос или дождитесь первой заявки.'}</span></div>}</div>
     <div className="admin-section-head customers-head"><div><div className="section-kicker">КЛИЕНТСКАЯ БАЗА</div><h2>Профили <span>{accounts.filter(user => user.role === 'customer').length}</span></h2></div><span className="muted-copy">Аккаунты из базы данных</span></div>
     <div className="customer-list">{accounts.filter(user => user.role === 'customer').map(user => <div className="customer-row" key={user.id} data-testid={`customer-${user.id}`}><div className="customer-avatar">{user.name.charAt(0)}</div><div className="customer-info"><strong>{user.name}</strong><span>Telegram</span></div><span className="customer-phone">{user.phone || 'Телефон не указан'}</span><span className="customer-order-count">{orders.filter(order => order.userId === user.id).length} заяв.</span></div>)}</div>

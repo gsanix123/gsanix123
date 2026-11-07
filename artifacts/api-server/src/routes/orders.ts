@@ -15,8 +15,13 @@ import { requireAdmin, requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
+function formatOrderNumber(value: number): string {
+  return "kkkk-" + String(value).padStart(5, "0");
+}
 function orderSelection() {
   return {
+    orderNumber: ordersTable.orderNumber,
+    title: ordersTable.title,
     id: ordersTable.id,
     userId: ordersTable.userId,
     customerName: usersTable.name,
@@ -44,7 +49,14 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
           .where(eq(ordersTable.userId, req.authUser!.id))
           .orderBy(desc(ordersTable.createdAt));
 
-  res.json(ListOrdersResponse.parse(orders));
+          res.json(
+            ListOrdersResponse.parse(
+              orders.map((order) => ({
+                ...order,
+                orderNumber: formatOrderNumber(order.orderNumber),
+              })),
+            ),
+          );
 });
 
 router.post("/orders", requireAuth, async (req, res): Promise<void> => {
@@ -75,6 +87,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     .insert(ordersTable)
     .values({
       userId: req.authUser!.id,
+      title: parsed.data.title.trim(),
       platform: parsed.data.platform,
       url: productUrl.toString(),
       size: parsed.data.size?.trim() ?? "",
@@ -84,7 +97,11 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     })
     .returning();
 
-  const response = { ...order, customerName: req.authUser!.name };
+    const response = {
+      ...order,
+      orderNumber: formatOrderNumber(order.orderNumber),
+      customerName: req.authUser!.name,
+    };
   res.status(201).json(CreateOrderResponse.parse(response));
 });
 
@@ -112,7 +129,12 @@ router.get("/orders/:orderId", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetOrderResponse.parse(order));
+  res.json(
+    GetOrderResponse.parse({
+      ...order,
+      orderNumber: formatOrderNumber(order.orderNumber),
+    }),
+  );
 });
 
 router.patch(
@@ -150,7 +172,12 @@ router.patch(
       .where(eq(ordersTable.id, updated.id))
       .limit(1);
 
-    res.json(UpdateOrderStatusResponse.parse(order));
+      res.json(
+        UpdateOrderStatusResponse.parse({
+          ...order,
+          orderNumber: formatOrderNumber(order.orderNumber),
+        }),
+      );
   },
 );
 
